@@ -9,6 +9,7 @@ import org.junit.Test;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
+import java.util.function.Consumer;
 
 public class JPAUnitTestCase {
 
@@ -26,30 +27,32 @@ public class JPAUnitTestCase {
 
 	@Test
 	public void hhh123Test() throws Exception {
-		EntityManager entityManager = entityManagerFactory.createEntityManager();
-		entityManager.getTransaction().begin();
-
         Author author = new Author("John");
         Book book = new Book("War and Peace", author);
 
-        entityManager.persist(author);
-        entityManager.persist(book);
+        doInTransaction(entityManager -> {
+            entityManager.persist(author);
+            entityManager.persist(book);
+//            entityManager.createQuery("update Author a set a.version = 5").executeUpdate();
+        });
 
-		entityManager.getTransaction().commit();
-		entityManager.close();
+        author.setVersion(5L);
+
+        System.out.println("\n =================== Done init ===============\n");
+
+        doInTransaction(entityManager -> {
+            // Book loadedBook = entityManager.find(Book.class, 1L);
+            Book loadedBook = entityManager.merge(book);
+            loadedBook.setTitle("merged");
+        });
+	}
 
 
-        entityManager = entityManagerFactory.createEntityManager();
+    private void doInTransaction(Consumer<EntityManager> callable) {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
         entityManager.getTransaction().begin();
-
-
-        System.out.println("\n =================== Load ===============\n");
-        Book loadedBook = entityManager.find(Book.class, 1L);
-
-        System.out.println("\n =================== Playing ===============\n");
-        System.out.println("author: " + loadedBook.getAuthor().getId());
-
+        callable.accept(entityManager);
         entityManager.getTransaction().commit();
         entityManager.close();
-	}
+    }
 }
