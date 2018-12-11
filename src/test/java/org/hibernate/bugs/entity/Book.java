@@ -1,51 +1,67 @@
 package org.hibernate.bugs.entity;
 
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.ManyToOne;
+import org.hibernate.annotations.Type;
+import org.hibernate.annotations.TypeDef;
+import org.hibernate.annotations.TypeDefs;
+import org.hibernate.bugs.AlwaysUniqueLocalDateTimeType;
 
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.Id;
+import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Objects;
+
+@TypeDefs({
+        @TypeDef(name = "unique-local-date-time", typeClass = AlwaysUniqueLocalDateTimeType.class)
+})
 @Entity
-public class Book {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+//@IdClass(BookId.class)
+public class Book implements Serializable {
 
     private String title;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    private Author author;
+    @Id
+    @Type(type = "unique-local-date-time")
+    @Column(columnDefinition = "datetime")
+    private LocalDateTime createdDate;
 
-    Book() { }
+    @Enumerated(EnumType.STRING)
+    private BookType type;
 
-    public Book(String title, Author author) {
+    private Book() {
+        //for ORM
+    }
+
+    public Book(String title, BookType type) {
         this.title = title;
-        this.author = author;
+        this.type = type;
+        createdDate = LocalDateTime.parse("2042-01-01T12:42:42");
     }
 
-    public Long getId() {
-        return id;
+    @Override
+    public String toString() {
+        return "Book{" +
+                "title='" + title + '\'' +
+                ", createdDate=" + createdDate +
+                ", type=" + type +
+                '}';
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public boolean isSameAs(Book other) {
+        if (other == null) return false;
+        return Objects.equals(title, other.title) && type == other.type;
     }
 
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public Author getAuthor() {
-        return author;
-    }
-
-    public void setAuthor(Author author) {
-        this.author = author;
+    public boolean isSameAsAnyOf(Collection<Book> others) {
+        for (Book other: others) {
+            if (isSameAs(other)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
